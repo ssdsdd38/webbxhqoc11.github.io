@@ -1,0 +1,819 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QOC Leaderboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #1c1712;
+    --panel: #261f18;
+    --row-a: #2c241c;
+    --row-b: #241d16;
+    --line: #3b3126;
+    --text: #f2e9d8;
+    --muted: #a99a83;
+    --light-sq: #e8d7b0;
+    --dark-sq: #8a5a3c;
+    --brass: #e2b23f;
+    --green: #86b95a;
+    --danger: #f08a7a;
+    --radius: 6px;
+    --serif: "Fraunces", "Iowan Old Style", Georgia, "Times New Roman", serif;
+    --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1180px; margin: 0 auto; padding: 40px 20px 72px; }
+
+  /* Header */
+  header { margin-bottom: 28px; }
+  h1 {
+    font-family: var(--serif);
+    font-weight: 800;
+    font-size: clamp(2.4rem, 6vw, 4rem);
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    margin: 0 0 14px;
+  }
+  .board-strip {
+    height: 16px;
+    max-width: 480px;
+    border-radius: 2px;
+    background:
+      repeating-conic-gradient(var(--light-sq) 0% 25%, var(--dark-sq) 0% 50%) 0 0 / 32px 32px;
+    opacity: .95;
+  }
+
+  /* Controls */
+  .controls {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 36px;
+  }
+  .toolbar {
+    display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center;
+  }
+  .toolbar label { display: inline-flex; gap: 8px; align-items: center; cursor: pointer; }
+  .toolbar input[type="checkbox"] { accent-color: var(--brass); width: 16px; height: 16px; }
+  #updated { color: var(--muted); font-size: .9rem; }
+  .spacer { flex: 1; }
+  .badge {
+    font-size: .85rem; font-weight: 600; color: #22190a; background: var(--green);
+    border-radius: 999px; padding: 3px 12px;
+  }
+
+  .login-box, .add-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .login-box { margin-top: 16px; }
+  #adminPanel { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+  .login-box input, .add-row input[type="text"] {
+    flex: 1 1 260px;
+    min-width: 0;
+    background: #17120d;
+    color: var(--text);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font: inherit;
+  }
+  .login-box input { flex-basis: 220px; max-width: 360px; }
+  input::placeholder { color: #7b6d58; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    border-radius: var(--radius);
+    border: 1px solid transparent;
+    padding: 11px 18px;
+    cursor: pointer;
+    transition: background .15s, border-color .15s, opacity .15s;
+  }
+  .btn-primary { background: var(--brass); color: #22190a; }
+  .btn-primary:hover:not(:disabled) { background: #f0c455; }
+  .btn-ghost { background: transparent; color: var(--text); border-color: var(--line); }
+  .btn-ghost:hover:not(:disabled) { border-color: var(--muted); }
+  button:disabled { opacity: .55; cursor: progress; }
+  :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #17120d; border: 1px solid var(--line);
+    border-radius: 999px; padding: 4px 6px 4px 12px; font-size: .9rem;
+  }
+  .chip.err { border-color: var(--danger); }
+  .chip button {
+    background: transparent; color: var(--muted); border: 0; padding: 0 6px;
+    font-size: 1.15rem; line-height: 1; border-radius: 50%;
+  }
+  .chip button:hover { color: var(--text); }
+
+  #message { min-height: 1.4em; margin-top: 12px; font-size: .92rem; }
+  #message.error { color: var(--danger); }
+  #message.ok { color: var(--green); }
+
+  /* Sections */
+  section { margin-bottom: 44px; }
+  h2 {
+    font-family: var(--serif);
+    font-weight: 600;
+    font-size: 1.6rem;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .note { color: var(--muted); font-size: .9rem; margin: 0 0 14px; }
+  .trio { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 28px; }
+  .trio h2 { margin-bottom: 12px; }
+
+  .table-wrap {
+    overflow-x: auto;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  table { width: 100%; border-collapse: collapse; min-width: 260px; }
+  th, td { padding: 11px 14px; text-align: left; white-space: nowrap; }
+  th {
+    font-weight: 500; font-size: .85rem; color: var(--muted);
+    border-bottom: 1px solid var(--line); background: #201a14;
+  }
+  tbody tr:nth-child(odd) { background: var(--row-a); }
+  tbody tr:nth-child(even) { background: var(--row-b); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.rank { width: 76px; font-variant-numeric: tabular-nums; color: var(--muted); }
+  td.rank .medal { font-size: 1.25rem; margin-right: 6px; vertical-align: -1px; }
+  tr.top1 td.rank, tr.top2 td.rank, tr.top3 td.rank { color: var(--text); font-weight: 600; }
+  tr.top1 { box-shadow: inset 3px 0 0 #e2b23f; }
+  tr.top2 { box-shadow: inset 3px 0 0 #c4c8cf; }
+  tr.top3 { box-shadow: inset 3px 0 0 #c47f45; }
+  tr.unranked td { color: #7b6d58; }
+  td.user a { color: var(--text); text-decoration: none; font-weight: 500; }
+  td.user a:hover { text-decoration: underline; }
+  td.strong { font-weight: 600; color: var(--brass); }
+  td.total { font-weight: 600; color: var(--brass); }
+  .empty { padding: 28px 18px; text-align: center; color: var(--muted); }
+
+  .avatar {
+    width: 34px; height: 34px; border-radius: 4px; object-fit: cover; display: block;
+    background: var(--dark-sq);
+  }
+  .avatar.fallback {
+    display: grid; place-items: center; font-weight: 600; color: #22190a;
+    background: var(--light-sq);
+  }
+
+  .spinner {
+    display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px;
+    border: 2px solid rgba(34,25,10,.3); border-top-color: #22190a; border-radius: 50%;
+    animation: spin .7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    .spinner { animation-duration: 2s; }
+    html { scroll-behavior: auto; }
+  }
+  @media (max-width: 520px) {
+    th, td { padding: 10px 10px; }
+    td.rank { width: 64px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>QOC Leaderboard</h1>
+    <div class="board-strip" aria-hidden="true"></div>
+  </header>
+
+  <div class="controls">
+    <!-- Visible to everyone -->
+    <div class="toolbar">
+      <button class="btn-primary" id="refreshBtn" type="button">Refresh data</button>
+      <label><input type="checkbox" id="ratedOnly"> Count rated games only</label>
+      <span id="updated">Not refreshed yet</span>
+      <span class="spacer"></span>
+      <span class="badge" id="adminBadge" hidden>Administrator</span>
+      <button class="btn-ghost" id="adminToggle" type="button">Admin login</button>
+    </div>
+
+    <!-- Login form (hidden until "Admin login" is clicked) -->
+    <div class="login-box" id="loginBox" hidden>
+      <input type="password" id="passwordInput" placeholder="Administrator password" autocomplete="current-password" aria-label="Administrator password">
+      <button class="btn-primary" id="loginBtn" type="button">Log in</button>
+      <button class="btn-ghost" id="loginCancel" type="button">Cancel</button>
+    </div>
+
+    <!-- Administrator only -->
+    <div id="adminPanel" hidden>
+      <div class="add-row">
+        <input type="text" id="usernameInput" placeholder="Chess.com username (separate several with commas)" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Chess.com username">
+        <button class="btn-primary" id="addBtn" type="button">Add player</button>
+        <button class="btn-ghost" id="exportBtn" type="button">Copy list for code</button>
+        <button class="btn-ghost" id="clearBtn" type="button">Clear all players</button>
+      </div>
+      <div class="chips" id="chips" aria-label="Tracked players"></div>
+    </div>
+
+    <div id="message" role="status" aria-live="polite"></div>
+  </div>
+
+  <section id="composite-section">
+    <h2>Composite ranking</h2>
+    <p class="note">Weighted score: (Bullet × 3 + Blitz × 5 + Rapid × 10) ÷ 18. Players need all three ratings to be ranked.</p>
+    <div class="table-wrap" id="composite"></div>
+  </section>
+
+  <div class="trio">
+    <section>
+      <h2>Bullet</h2>
+      <div class="table-wrap" id="bullet"></div>
+    </section>
+    <section>
+      <h2>Blitz</h2>
+      <div class="table-wrap" id="blitz"></div>
+    </section>
+    <section>
+      <h2>Rapid</h2>
+      <div class="table-wrap" id="rapid"></div>
+    </section>
+  </div>
+
+  <section id="monthly-section">
+    <h2>Matches played this month</h2>
+    <p class="note" id="monthNote"></p>
+    <div class="table-wrap" id="monthly"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* =====================================================================
+     SITE OWNER SETTINGS  (edit these three values in the code)
+     ---------------------------------------------------------------------
+     ADMIN_HASH       SHA-256 of ADMIN_SALT + your password.
+                      The default password is:  change-me-now
+                      To set your own, open this page, press F12, and paste in the
+                      console (replace YOUR_PASSWORD):
+                        qocHash('YOUR_PASSWORD')
+                      then paste the printed value below.
+     PUBLISHED_USERS The list every visitor sees, e.g. ['hikaru', 'magnuscarlsen'].
+                      While logged in as admin, click "Copy list for code" and paste
+                      the result here so all visitors see your current list.
+     ===================================================================== */
+  var ADMIN_SALT = 'qoc-leaderboard::';
+  var ADMIN_HASH = '0cc7b894be37f16e8c60348eacd2a75b002b6d63bc308378464ab5f183ea0cf4';
+  var PUBLISHED_USERS = [];
+
+  var API = 'https://api.chess.com/pub/player/';
+  var LS_USERS = 'qoc.users';
+  var LS_DATA = 'qoc.data';
+  var LS_UPDATED = 'qoc.updated';
+  var LS_RATED = 'qoc.ratedOnly';
+  var SS_ADMIN = 'qoc.admin';
+  var MEDALS = { 1: '\uD83E\uDD47', 2: '\uD83E\uDD48', 3: '\uD83E\uDD49' };
+  var CLASSES = ['bullet', 'blitz', 'rapid'];
+
+  var state = { users: [], data: {}, updated: null, ratedOnly: false, loading: false, isAdmin: false };
+  var loginFails = 0, lockedUntil = 0;
+
+  var $ = function (id) { return document.getElementById(id); };
+  var els = {
+    input: $('usernameInput'), add: $('addBtn'), refresh: $('refreshBtn'), clear: $('clearBtn'), exp: $('exportBtn'),
+    rated: $('ratedOnly'), chips: $('chips'), msg: $('message'), updated: $('updated'),
+    monthNote: $('monthNote'), adminToggle: $('adminToggle'), adminBadge: $('adminBadge'),
+    adminPanel: $('adminPanel'), loginBox: $('loginBox'), password: $('passwordInput'),
+    loginBtn: $('loginBtn'), loginCancel: $('loginCancel')
+  };
+
+  /* ---------- SHA-256 (pure JS, works on any http/https/file page) ---------- */
+  function rotr(x, n) { return (x >>> n) | (x << (32 - n)); }
+  function sha256(msg) {
+    var K = [0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+    var H = [0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];
+    var bytes = unescape(encodeURIComponent(msg)).split('').map(function (c) { return c.charCodeAt(0); });
+    var len = bytes.length;
+    bytes.push(0x80);
+    while (bytes.length % 64 !== 56) bytes.push(0);
+    var hi = Math.floor(len * 8 / 0x100000000), lo = (len * 8) >>> 0;
+    bytes.push((hi >>> 24) & 255, (hi >>> 16) & 255, (hi >>> 8) & 255, hi & 255,
+               (lo >>> 24) & 255, (lo >>> 16) & 255, (lo >>> 8) & 255, lo & 255);
+    for (var i = 0; i < bytes.length; i += 64) {
+      var w = new Array(64), t;
+      for (t = 0; t < 16; t++) {
+        w[t] = (bytes[i + t * 4] << 24) | (bytes[i + t * 4 + 1] << 16) | (bytes[i + t * 4 + 2] << 8) | bytes[i + t * 4 + 3];
+      }
+      for (t = 16; t < 64; t++) {
+        var s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+        var s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+        w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+      }
+      var a = H[0], b = H[1], c = H[2], d = H[3], e = H[4], f = H[5], g = H[6], h = H[7];
+      for (t = 0; t < 64; t++) {
+        var S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+        var ch = (e & f) ^ (~e & g);
+        var t1 = (h + S1 + ch + K[t] + w[t]) | 0;
+        var S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+        var maj = (a & b) ^ (a & c) ^ (b & c);
+        var t2 = (S0 + maj) | 0;
+        h = g; g = f; f = e; e = (d + t1) | 0; d = c; c = b; b = a; a = (t1 + t2) | 0;
+      }
+      H[0] = (H[0] + a) | 0; H[1] = (H[1] + b) | 0; H[2] = (H[2] + c) | 0; H[3] = (H[3] + d) | 0;
+      H[4] = (H[4] + e) | 0; H[5] = (H[5] + f) | 0; H[6] = (H[6] + g) | 0; H[7] = (H[7] + h) | 0;
+    }
+    return H.map(function (x) { return ('00000000' + (x >>> 0).toString(16)).slice(-8); }).join('');
+  }
+  // Console helper for the site owner: qocHash('my new password')
+  window.qocHash = function (password) { return sha256(ADMIN_SALT + password); };
+
+  /* ---------- Storage ---------- */
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* storage unavailable */ } }
+  function ssGet(k) { try { return sessionStorage.getItem(k); } catch (e) { return null; } }
+  function ssSet(k, v) { try { sessionStorage.setItem(k, v); } catch (e) { /* unavailable */ } }
+  function ssDel(k) { try { sessionStorage.removeItem(k); } catch (e) { /* unavailable */ } }
+
+  function uniqueLower(list) {
+    var seen = {}, out = [];
+    (list || []).forEach(function (n) {
+      var k = String(n).trim().toLowerCase();
+      if (k && !seen[k]) { seen[k] = true; out.push(k); }
+    });
+    return out;
+  }
+  function storedUsers() {
+    var raw = lsGet(LS_USERS);
+    if (raw === null) return null;
+    try { return uniqueLower(JSON.parse(raw)); } catch (e) { return []; }
+  }
+  // Administrator edits a saved list; visitors see the list published in the code.
+  function activeUsers() {
+    var published = uniqueLower(PUBLISHED_USERS);
+    var stored = storedUsers();
+    if (state.isAdmin) return stored !== null ? stored : published;
+    return published.length ? published : (stored || []);
+  }
+  function load() {
+    try { state.data = JSON.parse(lsGet(LS_DATA) || '{}') || {}; } catch (e) { state.data = {}; }
+    state.updated = Number(lsGet(LS_UPDATED)) || null;
+    state.ratedOnly = lsGet(LS_RATED) === '1';
+    state.isAdmin = ssGet(SS_ADMIN) === ADMIN_HASH;
+    state.users = activeUsers();
+  }
+  function save() {
+    if (state.isAdmin) lsSet(LS_USERS, JSON.stringify(state.users));
+    lsSet(LS_DATA, JSON.stringify(state.data));
+    lsSet(LS_UPDATED, state.updated ? String(state.updated) : '');
+    lsSet(LS_RATED, state.ratedOnly ? '1' : '0');
+  }
+
+  /* ---------- Helpers ---------- */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  function setMsg(text, type) {
+    els.msg.textContent = text || '';
+    els.msg.className = type || '';
+  }
+  function monthInfo() {
+    var now = new Date();
+    return {
+      y: now.getUTCFullYear(),
+      m: String(now.getUTCMonth() + 1).padStart(2, '0'),
+      label: now.toLocaleString('en', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    };
+  }
+
+  /* ---------- Chess.com API ---------- */
+  async function getJSON(url) {
+    for (var i = 0; i < 3; i++) {
+      var res = await fetch(url);
+      if (res.status === 429) { await sleep(1200 * (i + 1)); continue; }
+      if (res.status === 404) return { __notFound: true };
+      if (!res.ok) throw new Error('Chess.com returned HTTP ' + res.status);
+      return res.json();
+    }
+    throw new Error('Chess.com is rate limiting requests. Wait a moment and refresh.');
+  }
+
+  async function fetchPlayer(name) {
+    var key = name.toLowerCase();
+    var mi = monthInfo();
+    var base = API + encodeURIComponent(key);
+
+    var results = await Promise.all([
+      getJSON(base),
+      getJSON(base + '/stats'),
+      getJSON(base + '/games/' + mi.y + '/' + mi.m)
+    ]);
+    var profile = results[0], stats = results[1], games = results[2];
+
+    if (profile.__notFound) throw new Error('User not found on Chess.com');
+
+    var displayName = key;
+    if (profile.url) {
+      var last = String(profile.url).split('/').pop();
+      if (last && last.toLowerCase() === key) displayName = last;
+    }
+
+    var player = {
+      username: displayName,
+      url: profile.url || ('https://www.chess.com/member/' + key),
+      avatar: profile.avatar || null,
+      month: mi.y + '-' + mi.m,
+      error: null,
+      elo: {},
+      matches: {}
+    };
+
+    CLASSES.forEach(function (c) {
+      var s = stats && stats['chess_' + c];
+      player.elo[c] = s && s.last && typeof s.last.rating === 'number' ? s.last.rating : null;
+      player.matches[c] = { all: 0, rated: 0 };
+    });
+
+    var list = (games && games.games) || [];
+    list.forEach(function (g) {
+      if (g.rules !== 'chess') return;
+      var bucket = player.matches[g.time_class];
+      if (!bucket) return;
+      bucket.all++;
+      if (g.rated) bucket.rated++;
+    });
+    return player;
+  }
+
+  async function pool(items, limit, fn) {
+    var queue = items.slice();
+    var workers = [];
+    for (var i = 0; i < Math.min(limit, queue.length); i++) {
+      workers.push((async function () {
+        while (queue.length) { await fn(queue.shift()); }
+      })());
+    }
+    await Promise.all(workers);
+  }
+
+  /* ---------- Administrator access ---------- */
+  function applyRole() {
+    state.users = activeUsers();
+    render();
+    var missing = state.users.some(function (k) { return !state.data[k]; });
+    if (missing) refreshAll();
+  }
+
+  async function login() {
+    var now = Date.now();
+    if (now < lockedUntil) {
+      setMsg('Too many attempts. Try again in ' + Math.ceil((lockedUntil - now) / 1000) + ' seconds.', 'error');
+      return;
+    }
+    var pw = els.password.value;
+    if (!pw) { setMsg('Enter the administrator password.', 'error'); return; }
+    var hash = sha256(ADMIN_SALT + pw);
+    if (hash === ADMIN_HASH) {
+      loginFails = 0;
+      state.isAdmin = true;
+      ssSet(SS_ADMIN, ADMIN_HASH);
+      els.password.value = '';
+      els.loginBox.hidden = true;
+      setMsg('Logged in as administrator.', 'ok');
+      applyRole();
+    } else {
+      loginFails++;
+      els.password.value = '';
+      await sleep(600);
+      if (loginFails >= 5) {
+        lockedUntil = Date.now() + 30000;
+        loginFails = 0;
+        setMsg('Incorrect password. Login is locked for 30 seconds.', 'error');
+      } else {
+        setMsg('Incorrect password.', 'error');
+      }
+    }
+  }
+
+  function logout() {
+    state.isAdmin = false;
+    ssDel(SS_ADMIN);
+    els.loginBox.hidden = true;
+    setMsg('Logged out.', 'ok');
+    applyRole();
+  }
+
+  /* ---------- Player management (administrator only) ---------- */
+  function setLoading(on) {
+    state.loading = on;
+    els.add.disabled = on;
+    els.refresh.disabled = on;
+    els.clear.disabled = on;
+    els.exp.disabled = on;
+    els.refresh.innerHTML = on ? '<span class="spinner"></span>Refreshing…' : 'Refresh data';
+  }
+
+  async function addUsers(raw) {
+    if (!state.isAdmin) { setMsg('Only the administrator can add players.', 'error'); return; }
+    var names = raw.split(/[\s,;]+/).map(function (s) { return s.trim().replace(/^@/, ''); }).filter(Boolean);
+    names = names.filter(function (n, i) { return names.findIndex(function (x) { return x.toLowerCase() === n.toLowerCase(); }) === i; });
+    if (!names.length) { setMsg('Enter a Chess.com username to add.', 'error'); return; }
+
+    var invalid = names.filter(function (n) { return !/^[A-Za-z0-9_-]{1,50}$/.test(n); });
+    if (invalid.length) { setMsg('Invalid username: ' + invalid.join(', ') + '. Use letters, numbers, hyphens or underscores.', 'error'); return; }
+
+    var fresh = names.filter(function (n) { return state.users.indexOf(n.toLowerCase()) === -1; });
+    var dupes = names.length - fresh.length;
+    if (!fresh.length) { setMsg('That player is already on the leaderboard.', 'error'); return; }
+
+    setLoading(true);
+    setMsg('Fetching ' + fresh.length + ' player' + (fresh.length > 1 ? 's' : '') + ' from Chess.com…');
+    var failures = [], added = 0;
+
+    await pool(fresh, 3, async function (name) {
+      try {
+        var p = await fetchPlayer(name);
+        var key = name.toLowerCase();
+        state.data[key] = p;
+        if (state.users.indexOf(key) === -1) state.users.push(key);
+        added++;
+      } catch (e) {
+        failures.push(name + ' (' + (e.message || 'failed') + ')');
+      }
+    });
+
+    state.updated = Date.now();
+    save();
+    setLoading(false);
+    render();
+    els.input.value = failures.length ? failures.map(function (f) { return f.split(' (')[0]; }).join(', ') : '';
+
+    if (failures.length) {
+      setMsg('Could not add: ' + failures.join('; ') + (added ? '. Added ' + added + '.' : ''), 'error');
+    } else {
+      setMsg('Added ' + added + ' player' + (added > 1 ? 's' : '') + (dupes ? ' (' + dupes + ' already listed)' : '') + '.', 'ok');
+    }
+  }
+
+  function removeUser(key) {
+    if (!state.isAdmin) { setMsg('Only the administrator can remove players.', 'error'); return; }
+    state.users = state.users.filter(function (u) { return u !== key; });
+    delete state.data[key];
+    save();
+    render();
+    setMsg('');
+  }
+
+  function clearAll() {
+    if (!state.isAdmin) { setMsg('Only the administrator can clear the leaderboard.', 'error'); return; }
+    if (!state.users.length) return;
+    if (confirm('Remove all players from the leaderboard?')) {
+      state.users = []; state.data = {}; state.updated = null;
+      save(); render(); setMsg('');
+    }
+  }
+
+  function exportList() {
+    if (!state.isAdmin) return;
+    var names = state.users.map(function (k) { return (state.data[k] && state.data[k].username) || k; });
+    var text = JSON.stringify(names);
+    var done = function () {
+      setMsg('Copied. Paste it into PUBLISHED_USERS in the code so every visitor sees this list: ' + text, 'ok');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { window.prompt('Copy this list:', text); });
+    } else {
+      window.prompt('Copy this list:', text);
+    }
+  }
+
+  /* ---------- Refresh (available to everyone) ---------- */
+  async function refreshAll() {
+    if (state.loading) return;
+    if (!state.users.length) { setMsg('There are no players to refresh yet.', 'error'); return; }
+    setLoading(true);
+    setMsg('Refreshing ' + state.users.length + ' player' + (state.users.length > 1 ? 's' : '') + ' from Chess.com…');
+    var errors = [];
+
+    await pool(state.users.slice(), 3, async function (key) {
+      var old = state.data[key];
+      try {
+        state.data[key] = await fetchPlayer((old && old.username) || key);
+      } catch (e) {
+        if (old) old.error = e.message || 'Refresh failed';
+        else state.data[key] = { username: key, error: e.message || 'Refresh failed', elo: {}, matches: {} };
+        errors.push(((old && old.username) || key) + ': ' + (e.message || 'failed'));
+      }
+      render();
+    });
+
+    state.updated = Date.now();
+    save();
+    setLoading(false);
+    render();
+    if (errors.length) setMsg('Some players could not be refreshed (old data kept where available). ' + errors.join('; '), 'error');
+    else setMsg('All players refreshed.', 'ok');
+  }
+
+  /* ---------- Ranking ---------- */
+  function rankRows(rows, valFn) {
+    var ranked = rows.filter(function (r) { return valFn(r) !== null && valFn(r) !== undefined; })
+      .sort(function (a, b) { return valFn(b) - valFn(a) || a.username.localeCompare(b.username); });
+    var unranked = rows.filter(function (r) { return valFn(r) === null || valFn(r) === undefined; })
+      .sort(function (a, b) { return a.username.localeCompare(b.username); });
+    var out = [], rank = 0, last = null;
+    ranked.forEach(function (r, i) {
+      var v = valFn(r);
+      if (v !== last) { rank = i + 1; last = v; }
+      out.push({ row: r, rank: rank, value: v });
+    });
+    unranked.forEach(function (r) { out.push({ row: r, rank: null, value: null }); });
+    return out;
+  }
+
+  /* ---------- Rendering ---------- */
+  function rankCell(rank, medalOk) {
+    if (rank === null) return '<td class="rank">–</td>';
+    var medal = medalOk !== false && MEDALS[rank] ? '<span class="medal" aria-hidden="true">' + MEDALS[rank] + '</span>' : '';
+    return '<td class="rank">' + medal + rank + '</td>';
+  }
+  function rowClass(rank, medalOk) {
+    if (rank === null) return 'unranked';
+    return medalOk !== false && rank <= 3 ? 'top' + rank : '';
+  }
+  function userCell(p) {
+    return '<td class="user"><a href="' + esc(p.url || '#') + '" target="_blank" rel="noopener noreferrer">' + esc(p.username) + '</a></td>';
+  }
+  function fmt(v) { return v === null || v === undefined ? '–' : String(v); }
+
+  function buildTable(headers, bodyRows) {
+    var head = headers.map(function (h) {
+      return '<th class="' + (h.num ? 'num' : '') + '">' + esc(h.label) + '</th>';
+    }).join('');
+    return '<table><thead><tr>' + head + '</tr></thead><tbody>' + bodyRows + '</tbody></table>';
+  }
+  function emptyBox() {
+    var text = state.isAdmin ? 'No players yet. Add a Chess.com username above.' : 'No players on the leaderboard yet.';
+    return '<div class="empty">' + esc(text) + '</div>';
+  }
+
+  function eloTable(players, cls) {
+    if (!players.length) return emptyBox();
+    var ranked = rankRows(players, function (p) { return p.elo && p.elo[cls] !== undefined ? p.elo[cls] : null; });
+    var body = ranked.map(function (r) {
+      return '<tr class="' + rowClass(r.rank) + '">' + rankCell(r.rank) + userCell(r.row) +
+        '<td class="num strong">' + fmt(r.value) + '</td></tr>';
+    }).join('');
+    var label = cls.charAt(0).toUpperCase() + cls.slice(1) + ' Elo';
+    return buildTable([{ label: 'Rank' }, { label: 'Username' }, { label: label, num: true }], body);
+  }
+
+  function compositeOf(p) {
+    var e = p.elo || {};
+    if (e.bullet == null || e.blitz == null || e.rapid == null) return null;
+    return (e.bullet * 3 + e.blitz * 5 + e.rapid * 10) / 18;
+  }
+  function compositeTable(players) {
+    if (!players.length) return emptyBox();
+    var ranked = rankRows(players, compositeOf);
+    var body = ranked.map(function (r) {
+      var e = r.row.elo || {};
+      return '<tr class="' + rowClass(r.rank) + '">' + rankCell(r.rank) + userCell(r.row) +
+        '<td class="num">' + fmt(e.bullet) + '</td><td class="num">' + fmt(e.blitz) + '</td><td class="num">' + fmt(e.rapid) + '</td>' +
+        '<td class="num strong">' + (r.value === null ? '–' : r.value.toFixed(1)) + '</td></tr>';
+    }).join('');
+    return buildTable([
+      { label: 'Rank' }, { label: 'Username' },
+      { label: 'Bullet Elo', num: true }, { label: 'Blitz Elo', num: true }, { label: 'Rapid Elo', num: true },
+      { label: 'Composite Elo', num: true }
+    ], body);
+  }
+
+  function countOf(p, cls) {
+    var m = p.matches && p.matches[cls];
+    if (!m) return null;
+    return state.ratedOnly ? m.rated : m.all;
+  }
+  function totalOf(p) {
+    if (!p.matches || !p.matches.bullet) return null;
+    return CLASSES.reduce(function (sum, c) { return sum + (countOf(p, c) || 0); }, 0);
+  }
+  function avatarHtml(p) {
+    var initial = esc((p.username || '?').charAt(0).toUpperCase());
+    if (p.avatar) {
+      return '<img class="avatar" src="' + esc(p.avatar) + '" alt="" loading="lazy" referrerpolicy="no-referrer" data-initial="' + initial + '">';
+    }
+    return '<div class="avatar fallback" aria-hidden="true">' + initial + '</div>';
+  }
+  function monthlyTable(players) {
+    if (!players.length) return emptyBox();
+    var ranked = rankRows(players, totalOf);
+    var body = ranked.map(function (r) {
+      var p = r.row;
+      var medalOk = r.value > 0;
+      return '<tr class="' + rowClass(r.rank, medalOk) + '">' + rankCell(r.rank, medalOk) +
+        '<td>' + avatarHtml(p) + '</td>' + userCell(p) +
+        '<td class="num">' + fmt(countOf(p, 'bullet')) + '</td>' +
+        '<td class="num">' + fmt(countOf(p, 'blitz')) + '</td>' +
+        '<td class="num">' + fmt(countOf(p, 'rapid')) + '</td>' +
+        '<td class="num total">' + fmt(r.value) + '</td></tr>';
+    }).join('');
+    return buildTable([
+      { label: 'Rank' }, { label: 'Avatar' }, { label: 'Username' },
+      { label: 'Bullet Matches', num: true }, { label: 'Blitz Matches', num: true }, { label: 'Rapid Matches', num: true },
+      { label: 'Total Monthly Matches', num: true }
+    ], body);
+  }
+
+  function renderChips() {
+    els.chips.innerHTML = state.users.map(function (key) {
+      var p = state.data[key] || { username: key };
+      var name = esc(p.username || key);
+      return '<span class="chip' + (p.error ? ' err' : '') + '"' + (p.error ? ' title="' + esc(p.error) + '"' : '') + '>' +
+        name + '<button type="button" data-remove="' + esc(key) + '" aria-label="Remove ' + name + '">&times;</button></span>';
+    }).join('');
+  }
+
+  function render() {
+    var players = state.users.map(function (k) { return state.data[k]; }).filter(Boolean);
+    $('composite').innerHTML = compositeTable(players);
+    CLASSES.forEach(function (c) { $(c).innerHTML = eloTable(players, c); });
+    $('monthly').innerHTML = monthlyTable(players);
+
+    els.adminPanel.hidden = !state.isAdmin;
+    els.adminBadge.hidden = !state.isAdmin;
+    els.adminToggle.textContent = state.isAdmin ? 'Log out' : 'Admin login';
+    if (state.isAdmin) renderChips(); else els.chips.innerHTML = '';
+
+    els.rated.checked = state.ratedOnly;
+    els.updated.textContent = state.updated ? 'Last refreshed ' + new Date(state.updated).toLocaleString() : 'Not refreshed yet';
+    els.monthNote.textContent = monthInfo().label + ' (UTC). Counts standard chess games' +
+      (state.ratedOnly ? ', rated only.' : ', rated and unrated.');
+  }
+
+  /* ---------- Events ---------- */
+  els.refresh.addEventListener('click', refreshAll);
+  els.rated.addEventListener('change', function () {
+    state.ratedOnly = els.rated.checked;
+    save(); render();
+  });
+
+  els.adminToggle.addEventListener('click', function () {
+    if (state.isAdmin) { logout(); return; }
+    els.loginBox.hidden = !els.loginBox.hidden;
+    if (!els.loginBox.hidden) els.password.focus();
+    setMsg('');
+  });
+  els.loginBtn.addEventListener('click', login);
+  els.loginCancel.addEventListener('click', function () {
+    els.loginBox.hidden = true; els.password.value = ''; setMsg('');
+  });
+  els.password.addEventListener('keydown', function (e) { if (e.key === 'Enter') login(); });
+
+  els.add.addEventListener('click', function () { addUsers(els.input.value); });
+  els.input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && !state.loading) addUsers(els.input.value);
+  });
+  els.clear.addEventListener('click', clearAll);
+  els.exp.addEventListener('click', exportList);
+  els.chips.addEventListener('click', function (e) {
+    var btn = e.target.closest('[data-remove]');
+    if (btn) removeUser(btn.getAttribute('data-remove'));
+  });
+
+  // Swap broken avatar images for an initial
+  document.addEventListener('error', function (e) {
+    var img = e.target;
+    if (img && img.tagName === 'IMG' && img.classList.contains('avatar')) {
+      var d = document.createElement('div');
+      d.className = 'avatar fallback';
+      d.setAttribute('aria-hidden', 'true');
+      d.textContent = img.getAttribute('data-initial') || '?';
+      img.replaceWith(d);
+    }
+  }, true);
+
+  /* ---------- Init ---------- */
+  load();
+  render();
+  if (state.users.length) refreshAll();
+})();
+</script>
+</body>
+</html>
